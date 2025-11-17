@@ -1,21 +1,87 @@
-global:
-  scrape_interval: 15s # Default scrape interval
+# Prometheus Configuration cho Food Fast Delivery
+# File này dùng để triển khai monitoring trên localhost
 
+global:
+  scrape_interval: 15s # Mỗi 15 giây scrape metrics một lần
+  evaluation_interval: 15s # Đánh giá rules mỗi 15 giây
+  external_labels:
+    monitor: 'foodfast-monitor'
+    environment: 'development'
+
+# Alertmanager configuration (optional - có thể thêm sau)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# Load rules once và định kỳ đánh giá theo evaluation_interval
+rule_files:
+  # - "alert_rules.yml"
+  # - "recording_rules.yml"
+
+# Scrape configurations
 scrape_configs:
+  # Job 1: Prometheus tự monitor chính nó
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
 
-  # - job_name: 'example_api'
-  #   scheme: http
-  #   static_configs:
-  #     - targets: ['example_api:9091']
+  # Job 2: Backend Node.js API
+  - job_name: 'foodfast-backend'
+    scrape_interval: 10s # Backend scrape nhanh hơn
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['cnpmfoodfastdelivery-production.up.railway.app'] # Sử dụng host.docker.internal để truy cập localhost từ Docker
+        labels:
+          service: 'backend'
+          app: 'foodfast'
+          component: 'api'
+    # Nếu chạy backend ngoài Docker, dùng localhost:5000
+    # - targets: ['localhost:5000']
 
-  #  ? TODO: add your services here
-  # - job_name: 'your-job-name'
-  #   scheme: https
+  # Job 3: MongoDB Atlas Metrics
+  # Cần cấu hình sau khi enable Prometheus Integration trong Atlas
+  - job_name: 'mongodb-atlas'
+    scrape_interval: 30s # Atlas metrics scrape chậm hơn
+    metrics_path: '/metrics'
+    scheme: https # Atlas dùng HTTPS
+    basic_auth:
+      username: 'PROMETHEUS_USERNAME' # Thay bằng username từ Atlas
+      password: 'PROMETHEUS_PASSWORD' # Thay bằng password từ Atlas
+    static_configs:
+      - targets:
+        # Thay bằng endpoint từ MongoDB Atlas sau khi enable Prometheus
+        # Format: <project-id>.metrics.mongodb.com
+        # - 'your-project-id.metrics.mongodb.com'
+        labels:
+          service: 'mongodb'
+          provider: 'atlas'
+          app: 'foodfast'
+    # Tạm thời comment out vì chưa có credentials
+    # Sau khi setup Atlas, uncomment và điền thông tin
+
+  # Job 4: Node Exporter (optional - để monitor host machine)
+  # Cần cài đặt node_exporter riêng
+  # - job_name: 'node-exporter'
   #   static_configs:
-  #     - targets: ['URL_GOES_HERE']
-  #   basic_auth:
-  #     username: HTTP_AUTH_USERNAME_GOES_HERE
-  #     password: HTTP_AUTH_PASSWORD_GOES_HERE
+  #     - targets: ['localhost:9100']
+  #       labels:
+  #         service: 'node-exporter'
+
+  # Job 5: Frontend (nếu có metrics)
+  # - job_name: 'foodfast-frontend'
+  #   scrape_interval: 15s
+  #   metrics_path: '/metrics'
+  #   static_configs:
+  #     - targets: ['localhost:5173']
+  #       labels:
+  #         service: 'frontend'
+  #         app: 'foodfast'
+
+# Note: Storage configuration (retention time, size, path) is set in docker-compose.yml command arguments
+# See docker-compose.yml for storage settings
+
+
