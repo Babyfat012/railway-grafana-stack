@@ -29,7 +29,7 @@ scrape_configs:
         labels:
           service: 'prometheus'
 
-  # Job 2: Backend Node.js API
+  # Job 2: Foodfast Backend Node.js API
   - job_name: 'foodfast-backend'
     scrape_interval: 10s # Backend scrape nhanh hơn
     metrics_path: '/metrics'
@@ -38,6 +38,17 @@ scrape_configs:
         labels:
           service: 'backend'
           app: 'foodfast'
+          component: 'api'
+
+    # Job : Grocery Backend Node.js API
+  - job_name: 'grocery-backend'
+    scrape_interval: 10s # Backend scrape nhanh hơn
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['grocery-store-production-45bc.up.railway.app'] # Sử dụng host.docker.internal để truy cập localhost từ Docker
+        labels:
+          service: 'backend'
+          app: 'grocery'
           component: 'api'
     # Nếu chạy backend ngoài Docker, dùng localhost:5000
     # - targets: ['localhost:5000']
